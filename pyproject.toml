@@ -6,7 +6,12 @@ readme = "SKILL.md"
 requires-python = ">=3.10"
 dependencies = [
     "faster-whisper>=1.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "httpx>=0.24.0",
+    "python-multipart>=0.0.6",
 ]
 
 [project.scripts]
 transcribe = "scripts.transcribe:main"
+stt-server = "server:main"

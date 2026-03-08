@@ -103,6 +103,136 @@ uv sync
 uv run scripts/transcribe.py <audio_file> --language zh
 ```
 
+## HTTP API 服务（OpenAI 兼容）
+
+可以将 faster-whisper 包装成 HTTP API，供 QQBot 插件等场景使用：
+
+```bash
+# 启动服务
+cd ~/.openclaw/workspace/skills/faster-whisper-stt
+uv run server.py --port 8080 --model small
+
+# 后台运行
+nohup uv run server.py --port 8080 --model small > /tmp/stt-server.log 2>&1 &
+```
+
+### API 端点
+
+- `POST /v1/audio/transcriptions` - 转写音频（OpenAI Whisper API 兼容）
+- `GET /health` - 健康检查
+
+### 调用示例
+
+```bash
+# 上传文件转写
+curl -X POST http://localhost:8080/v1/audio/transcriptions \
+  -F "file=@audio.mp3" \
+  -F "language=zh"
+
+# 使用 URL 转写
+curl -X POST http://localhost:8080/v1/audio/transcriptions \
+  -F "url=https://example.com/audio.mp3" \
+  -F "language=zh"
+```
+
+### 配置 QQBot 插件使用本地 STT
+
+**步骤 1：启动 STT API 服务**
+
+```bash
+cd ~/.openclaw/workspace/skills/faster-whisper-stt
+
+# 前台运行（调试用）
+uv run server.py --port 8080 --model small
+
+# 后台运行（生产用）
+nohup uv run server.py --port 8080 --model small > /tmp/stt-server.log 2>&1 &
+
+# 检查服务状态
+curl http://localhost:8080/health
+# 应返回: {"status":"ok","model":"small"}
+```
+
+**步骤 2：修改 OpenClaw 配置**
+
+在 `~/.openclaw/openclaw.json` 中添加 STT 配置：
+
+```json
+{
+  "channels": {
+    "qqbot": {
+      "stt": {
+        "provider": "local-whisper",
+        "model": "whisper-1"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "local-whisper": {
+        "baseUrl": "http://localhost:8080/v1",
+        "apiKey": "not-needed",
+        "models": [
+          {
+            "id": "whisper-1",
+            "name": "whisper-1"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+**⚠️ 重要注意事项：**
+
+1. **必须添加 `models` 数组**：provider 配置必须包含 `models` 数组，否则会导致 gateway 启动失败
+2. **`models.id` 要与 `stt.model` 匹配**：上面例子中都是 `whisper-1`
+3. **不影响文字聊天**：STT 配置只处理语音消息，文字消息仍然使用 `agents.defaults.model.primary` 指定的模型
+
+**步骤 3：重启 Gateway**
+
+```bash
+openclaw gateway restart
+```
+
+**步骤 4：验证 STT 是否生效**
+
+发送一条语音消息，查看日志：
+
+```bash
+tail -f /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log | grep -i "stt"
+```
+
+如果看到 `STT transcript: ...` 说明 STT 工作正常。
+
+### 开机自启（可选）
+
+创建 systemd 服务让 STT API 开机自启：
+
+```bash
+# 创建服务文件
+cat > ~/.config/systemd/user/stt-server.service << 'EOF'
+[Unit]
+Description=Faster-Whisper STT API Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/.openclaw/workspace/skills/faster-whisper-stt
+ExecStart=/root/.local/bin/uv run server.py --port 8080 --model small
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+
+# 启用服务
+systemctl --user enable stt-server
+systemctl --user start stt-server
+```
+
 ### GPU 支持（可选）
 
 如有 NVIDIA GPU，可安装 CUDA 库加速：
