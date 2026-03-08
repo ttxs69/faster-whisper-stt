@@ -72,6 +72,22 @@ uv run scripts/transcribe.py <audio_file> [--model small] [--language zh]
 - 实时倍率: ~8-10x
 - 内存占用: ~300MB
 
+## 🇨🇳 国内镜像配置（ModelScope）
+
+如果在中国无法访问 HuggingFace，可以用镜像：
+
+**方式 1：环境变量（推荐）**
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
+**方式 2：安装 modelscope 自动切换**
+```bash
+pip install modelscope
+```
+
+设置后再运行转写脚本，模型会自动从镜像下载。
+
 ## Installation
 
 本技能自带 `pyproject.toml`，使用 uv 一键安装依赖：
