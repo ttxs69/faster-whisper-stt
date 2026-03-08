@@ -1,0 +1,12 @@
+[project]
+name = "faster-whisper-stt"
+version = "0.1.0"
+description = "Local speech-to-text using Faster-Whisper with CTranslate2"
+readme = "SKILL.md"
+requires-python = ">=3.10"
+dependencies = [
+    "faster-whisper>=1.0.0",
+]
+
+[project.scripts]
+transcribe = "scripts.transcribe:main"
