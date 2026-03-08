@@ -206,12 +206,13 @@ tail -f /tmp/openclaw/openclaw-$(date +%Y-%m-%d).log | grep -i "stt"
 
 如果看到 `STT transcript: ...` 说明 STT 工作正常。
 
-### 开机自启（可选）
+### 开机自启（systemd）
 
-创建 systemd 服务让 STT API 开机自启：
+推荐使用 systemd 管理服务，实现开机自启和自动重启：
 
 ```bash
 # 创建服务文件
+mkdir -p ~/.config/systemd/user
 cat > ~/.config/systemd/user/stt-server.service << 'EOF'
 [Unit]
 Description=Faster-Whisper STT API Server
@@ -228,9 +229,29 @@ RestartSec=5
 WantedBy=default.target
 EOF
 
-# 启用服务
+# 启用并启动服务
+systemctl --user daemon-reload
 systemctl --user enable stt-server
 systemctl --user start stt-server
+
+# 检查状态
+systemctl --user status stt-server
+```
+
+**管理命令：**
+
+```bash
+# 查看状态
+systemctl --user status stt-server
+
+# 查看日志
+journalctl --user -u stt-server -f
+
+# 重启服务
+systemctl --user restart stt-server
+
+# 停止服务
+systemctl --user stop stt-server
 ```
 
 ### GPU 支持（可选）
